@@ -8,7 +8,7 @@ class CerrojoImpl extends UnicastRemoteObject implements Cerrojo {
     boolean writer;
     int readers;
     CerrojoImpl() throws RemoteException {
-        this.writer     = true;
+        this.writer     = false;
         this.readers    = 0;
     }
 
