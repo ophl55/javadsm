@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/javadsm.iml" filepath="$PROJECT_DIR$/javadsm.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/javadsm.iml" filepath="$PROJECT_DIR$/.idea/javadsm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/javadsm.iml" filepath="$PROJECT_DIR$/javadsm.iml" />
     </modules>
   </component>
 </project>
