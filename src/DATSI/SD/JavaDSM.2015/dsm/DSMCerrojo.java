@@ -13,14 +13,16 @@ public class DSMCerrojo {
     List<ObjetoCompartido> listofobjects = new ArrayList<ObjetosCompartido>();//saves all objects in list
     FabricaCerrojos factory;// factory of locks
     String name;// name of lock
+    Almacen memory; //memory system which is used
     Cerrojo lock;//normal lock on which dsmlock is based
     String server   = System.getenv("SERVIDOR");//get server from environment variables
     String port     = System.getenv("PUERTO");// get port from environment variables
+    boolean exclusive; // indicates whether the access is exclusive (write) or not (read)
 
     public DSMCerrojo (String nom) throws RemoteException {
 
         this.name = nom;//set name
-        this.almacen = (Almacen) Naming.lookup("rmi://" + servidor + ":"
+        this.memory = (Almacen) Naming.lookup("rmi://" + servidor + ":"
                 + puerto + "/DSM_almacen");// get memory from server
         this.factory = (FabricaCerrojos) Naming.lookup("rmi://" + servidor
                 + ":" + puerto + "/DSM_cerrojos");//get factory from server
@@ -30,7 +32,7 @@ public class DSMCerrojo {
 
     /**
      * adds object o to global list of objects
-     * @param o
+     * @param o object to be added
      */
     public void asociar(ObjetoCompartido o) {
         listofobjects.add(o);//adds object to list
@@ -38,7 +40,7 @@ public class DSMCerrojo {
 
     /**
      * removes object o from global list of objects
-     * @param o
+     * @param o object to be removed
      */
     public void desasociar(ObjetoCompartido o) {
         //iterates through list of objects
@@ -49,29 +51,73 @@ public class DSMCerrojo {
     }
 
     /**
-     *
-     * @param exc
-     * @return
+     *adquieres the lock, reads the remote memory and brings all objects up to date
+     * @param exc - indicates whether the access is exclusive(write) or not (read)
+     * @return true
      * @throws RemoteException
      */
     public boolean adquirir(boolean exc) throws RemoteException {
-        this.lock.adquirir(exc);
-        /**
-         * TODO
-         */
+        this.lock.adquirir(exc);//use function from Cerrojo
+        this.exclusive = exc;//set global variable
+
+        /*get header objects*/
+        List<CabeceraObjetoCompartido> listofheaders = new ArrayList<CabeceraObjetoCompartido>();
+        for (ObjetoCompartido o : objetos)
+            listofheaders.add(o.getCabecera());
+
+        //check whether list is empty
+        if(listofheaders.size() > 0 ){
+            List <ObjectoCompartido> newVersionObjects = memory.leerObjetos(listofheaders);//get latest versions of objects
+
+            //check whether list is empty
+            if(newVersionObjects != null)
+
+                for(ObjetoCompartido newObject : newVersionObjects){
+                    //get object through name
+                    ObjectCompartido object = getObjectfromName(newObject.getCabecera().getNombre());
+
+                    /*update object on new version*/
+                    if(object != null){
+                        object.setObjeto(newObject.getObjeto());
+                        object.setVersion(newObject.getCabecera().getVersion());
+                    }
+                }
+
+        }
+
         return true;
     }
 
     /**
-     *
-     * @return
+     * saves the latest versions of the objects
+     * on the remote memory if the access was exclusive
+     * and frees the lock with the free function from Cerrojo
+     * @return value of function liberar() of Cerrojo
      * @throws RemoteException
      */
     public boolean liberar() throws RemoteException {
-        this.lock.liberar();
-        /**
-         * TODO
-         */
-        return true;
+        if(exclusive){
+            List <ObjetosCompartido> objects = new ArrayList<ObjetoCompartido>();
+
+            //increment the version of the objects
+            for (ObjectCompartido obj : listofobjects){
+                obj.incVersion();
+                objects.add(obj);
+            }
+            //save the new versions in memory
+            memory.escribirObjetos(objects);
+        }
+
+        return this.lock.liberar();//frees object using function from Cerrojo
    }
+
+    /**
+     * returns object from list of objects with name: objectname
+     * @param objectname - name of the object
+     * @return ObjectCompartido with the objectname as name
+     */
+    private ObjectCompartido getObjectfromName(String objectname){
+        for (int i = 0 ; i < listofobjects.size();i++)
+            if (objectname.equals(listofobjects.get(i).getCabecera().getNombre()))
+                return listofobjects.get(i);
 }
