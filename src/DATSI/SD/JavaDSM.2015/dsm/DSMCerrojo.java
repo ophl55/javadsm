@@ -5,12 +5,15 @@ import java.rmi.server.*;
 import java.rmi.Naming;
 import java.util.*;
 import java.util.List;
-import Java.util.ArrayList;
+import java.util.ArrayList;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.net.MalformedURLException;
 
 
 public class DSMCerrojo {
 
-    List<ObjetoCompartido> listofobjects = new ArrayList<ObjetosCompartido>();//saves all objects in list
+    List<ObjetoCompartido> listofobjects = new ArrayList<ObjetoCompartido>();//saves all objects in list
     FabricaCerrojos factory;// factory of locks
     String name;// name of lock
     Almacen memory; //memory system which is used
@@ -19,13 +22,14 @@ public class DSMCerrojo {
     String port     = System.getenv("PUERTO");// get port from environment variables
     boolean exclusive; // indicates whether the access is exclusive (write) or not (read)
 
-    public DSMCerrojo (String nom) throws RemoteException {
+    public DSMCerrojo (String nom) throws RemoteException,
+    					MalformedURLException, NotBoundException {
 
         this.name = nom;//set name
-        this.memory = (Almacen) Naming.lookup("rmi://" + servidor + ":"
-                + puerto + "/DSM_almacen");// get memory from server
-        this.factory = (FabricaCerrojos) Naming.lookup("rmi://" + servidor
-                + ":" + puerto + "/DSM_cerrojos");//get factory from server
+        this.memory = (Almacen) Naming.lookup("rmi://" + server + ":"
+                + port + "/DSM_almacen");// get memory from server
+        this.factory = (FabricaCerrojos) Naming.lookup("rmi://" + server
+                + ":" + port + "/DSM_cerrojos");//get factory from server
 
         this.lock = this.factory.iniciar(nom);// look up lock from given factory
     }
@@ -62,19 +66,19 @@ public class DSMCerrojo {
 
         /*get header objects*/
         List<CabeceraObjetoCompartido> listofheaders = new ArrayList<CabeceraObjetoCompartido>();
-        for (ObjetoCompartido o : objetos)
+        for (ObjetoCompartido o : listofobjects)
             listofheaders.add(o.getCabecera());
 
         //check whether list is empty
         if(listofheaders.size() > 0 ){
-            List <ObjectoCompartido> newVersionObjects = memory.leerObjetos(listofheaders);//get latest versions of objects
+            List <ObjetoCompartido> newVersionObjects = memory.leerObjetos(listofheaders);//get latest versions of objects
 
             //check whether list is empty
             if(newVersionObjects != null)
 
                 for(ObjetoCompartido newObject : newVersionObjects){
                     //get object through name
-                    ObjectCompartido object = getObjectfromName(newObject.getCabecera().getNombre());
+                    ObjetoCompartido object = getObjectfromName(newObject.getCabecera().getNombre());
 
                     /*update object on new version*/
                     if(object != null){
@@ -97,10 +101,10 @@ public class DSMCerrojo {
      */
     public boolean liberar() throws RemoteException {
         if(exclusive){
-            List <ObjetosCompartido> objects = new ArrayList<ObjetoCompartido>();
+            List <ObjetoCompartido> objects = new ArrayList<ObjetoCompartido>();
 
             //increment the version of the objects
-            for (ObjectCompartido obj : listofobjects){
+            for (ObjetoCompartido obj : listofobjects){
                 obj.incVersion();
                 objects.add(obj);
             }
@@ -114,10 +118,13 @@ public class DSMCerrojo {
     /**
      * returns object from list of objects with name: objectname
      * @param objectname - name of the object
-     * @return ObjectCompartido with the objectname as name
+     * @return ObjetoCompartido with the objectname as name
      */
-    private ObjectCompartido getObjectfromName(String objectname){
+    private ObjetoCompartido getObjectfromName(String objectname){
         for (int i = 0 ; i < listofobjects.size();i++)
             if (objectname.equals(listofobjects.get(i).getCabecera().getNombre()))
                 return listofobjects.get(i);
+        return null;
+    }
 }
+
