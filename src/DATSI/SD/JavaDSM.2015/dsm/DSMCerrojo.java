@@ -18,14 +18,14 @@ public class DSMCerrojo {
     String name;// name of lock
     Almacen memory; //memory system which is used
     Cerrojo lock;//normal lock on which dsmlock is based
-    String server   = System.getenv("SERVIDOR");//get server from environment variables
-    String port     = System.getenv("PUERTO");// get port from environment variables
     boolean exclusive; // indicates whether the access is exclusive (write) or not (read)
 
     public DSMCerrojo (String nom) throws RemoteException,
     					MalformedURLException, NotBoundException {
 
         this.name = nom;//set name
+        String server   = System.getenv("SERVIDOR");//get server from environment variables
+        String port     = System.getenv("PUERTO");// get port from environment variables
         this.memory = (Almacen) Naming.lookup("rmi://" + server + ":"
                 + port + "/DSM_almacen");// get memory from server
         this.factory = (FabricaCerrojos) Naming.lookup("rmi://" + server
@@ -48,9 +48,11 @@ public class DSMCerrojo {
      */
     public void desasociar(ObjetoCompartido o) {
         //iterates through list of objects
-        for(ObjetoCompartido obj : listofobjects)
-            if (obj.getCabecera().getNombre().equals(o.getCabecera().getNombre()))
-                listofobjects.remove(obj);//remove object which same name from list
+        for(int j = 0 ; j < listofobjects.size();j++)
+            if (listofobjects.get(j).getCabecera().getNombre().equals(o.getCabecera().getNombre())) {
+                listofobjects.remove(j);//remove object which same name from list
+                return;
+            }
 
     }
 
@@ -82,9 +84,10 @@ public class DSMCerrojo {
 
                     /*update object on new version*/
                     if(object != null){
-                        object.setObjeto(newObject.getObjeto());
+                        if(!object.setObjeto(newObject.getObjeto())) return false;
                         object.setVersion(newObject.getCabecera().getVersion());
                     }
+                    else return false;
                 }
 
         }
